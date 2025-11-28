@@ -5,9 +5,30 @@ import { fetchMessages, sendMessage } from '../api.js';
 function Marquesina() {
   const [mensajes, setMensajes] = useState([]);
   const [input, setInput] = useState('');
+  const [isTwitch, setIsTwitch] = useState(false);
 
-  // Cargar mensajes del backend al iniciar
+  // Detectar si estamos dentro de Twitch Extension
   useEffect(() => {
+    if (window.Twitch && window.Twitch.ext) {
+      setIsTwitch(true);
+
+      window.Twitch.ext.onAuthorized(() => {
+        // Aquí podrías agregar cosas más adelante (tokens, etc.)
+      });
+
+    } else {
+      setIsTwitch(false);
+    }
+  }, []);
+
+  // Cargar mensajes SOLO si NO es modo demo
+  useEffect(() => {
+    if (!isTwitch) {
+      // MODO DEMO → mensaje fijo para aprobación
+      setMensajes([{ contenido: "✨ BIENVENIDOS AL STREAM ✨" }]);
+      return;
+    }
+
     async function loadMessages() {
       try {
         const data = await fetchMessages();
@@ -16,11 +37,14 @@ function Marquesina() {
         console.error('Error al cargar mensajes:', err);
       }
     }
-    loadMessages();
-  }, []);
 
+    loadMessages();
+  }, [isTwitch]);
+
+  // Agregar mensaje (solo disponible fuera de Twitch, por seguridad)
   const agregarMensaje = async () => {
-    if (input.trim() === '') return;
+    if (input.trim() === '' || isTwitch) return;
+
     try {
       await sendMessage(input.trim());
       setMensajes([...mensajes, { contenido: input.trim() }]);
@@ -35,15 +59,19 @@ function Marquesina() {
       {mensajes.map((msg, index) => (
         <Mensaje key={index} texto={msg.contenido} />
       ))}
-      <div className="controls">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe tu mensaje"
-        />
-        <button onClick={agregarMensaje}>Agregar</button>
-      </div>
+
+      {/* Controles ocultos en Twitch (requerido para aprobación) */}
+      {!isTwitch && (
+        <div className="controls">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Escribe tu mensaje"
+          />
+          <button onClick={agregarMensaje}>Agregar</button>
+        </div>
+      )}
     </div>
   );
 }
