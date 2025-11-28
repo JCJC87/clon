@@ -1,0 +1,18 @@
+{
+  "manifest_version": "1.0",
+  "version": "0.0.1",
+  "name": "Marquesina Vintage",
+  "description": "Extensión de marquesina tipo cine antiguo para Twitch",
+  "author_name": "J.C.",
+  "developer": {
+    "name": "J.C.",
+    "email": "tu-email@example.com"
+  },
+  "permissions": ["identity"],
+  "views": {
+    "panel": {
+      "viewer_url": "https://TU_FRONTEND_URL/index.html",
+      "can_link_external_content": false
+    }
+  }
+}
