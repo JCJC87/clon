@@ -1,67 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import Mensaje from './Mensaje.jsx';
-import { fetchMessages, sendMessage } from '../api.js';
+import React, { useState, useEffect } from "react";
+import Mensaje from "./Mensaje.jsx";
+import { fetchMessages, sendMessage } from "../api.js";
 
 function Marquesina() {
   const [mensajes, setMensajes] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isTwitch, setIsTwitch] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
-  // Detectar si estamos dentro de Twitch Extension
+  // Detectar si estamos en Twitch Extension
   useEffect(() => {
     if (window.Twitch && window.Twitch.ext) {
       setIsTwitch(true);
 
+      // Autorización del Helper
       window.Twitch.ext.onAuthorized(() => {
-        // Aquí podrías agregar cosas más adelante (tokens, etc.)
+        console.log("Autorizado por Twitch");
+        cargarMensajes();
       });
 
+      // Twitch listo
+      window.Twitch.ext.onContext(() => {
+        setIsReady(true);
+      });
     } else {
-      setIsTwitch(false);
+      // No estamos en Twitch → mostrar mensaje estándar
+      setIsReady(true);
+      setMensajes([{ contenido: "✨ BIENVENIDOS AL STREAM ✨" }]);
     }
   }, []);
 
-  // Cargar mensajes SOLO si NO es modo demo
-  useEffect(() => {
-    if (!isTwitch) {
-      // MODO DEMO → mensaje fijo para aprobación
-      setMensajes([{ contenido: "✨ BIENVENIDOS AL STREAM ✨" }]);
-      return;
-    }
-
-    async function loadMessages() {
-      try {
-        const data = await fetchMessages();
+  // Función para cargar mensajes desde backend
+  async function cargarMensajes() {
+    try {
+      const data = await fetchMessages();
+      if (Array.isArray(data) && data.length > 0) {
         setMensajes(data);
-      } catch (err) {
-        console.error('Error al cargar mensajes:', err);
+      } else {
+        // Backend vacío → mostrar mensaje default de bienvenida
+        setMensajes([{ contenido: "✨ BIENVENIDOS AL STREAM ✨" }]);
       }
+      setIsReady(true);
+    } catch (err) {
+      console.error("Error backend:", err);
+      // Si falla, mostrar mensaje default
+      setMensajes([{ contenido: "✨ BIENVENIDOS AL STREAM ✨" }]);
+      setIsReady(true);
     }
+  }
 
-    loadMessages();
-  }, [isTwitch]);
-
-  // Agregar mensaje (solo disponible fuera de Twitch, por seguridad)
+  // Agregar mensaje (solo si está autorizado)
   const agregarMensaje = async () => {
-    if (input.trim() === '' || isTwitch) return;
+    if (input.trim() === "") return;
 
     try {
       await sendMessage(input.trim());
       setMensajes([...mensajes, { contenido: input.trim() }]);
-      setInput('');
+      setInput("");
     } catch (err) {
-      console.error('Error al enviar mensaje:', err);
+      console.error("Error al enviar mensaje:", err);
     }
   };
 
   return (
     <div className="marquesina">
-      {mensajes.map((msg, index) => (
-        <Mensaje key={index} texto={msg.contenido} />
-      ))}
+      {/* --- MENSAJES --- */}
+      {isReady &&
+        mensajes.map((msg, index) => (
+          <Mensaje key={index} texto={msg.contenido} />
+        ))}
 
-      {/* Controles ocultos en Twitch (requerido para aprobación) */}
-      {!isTwitch && (
+      {/* --- CONTROLES SOLO PARA CREADOR Y MODS --- */}
+      {isTwitch && (
         <div className="controls">
           <input
             type="text"
